@@ -1,0 +1,27 @@
+services:
+  minesweeper:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    networks:
+      - web
+    labels:
+      # Traefik
+      traefik.enable: "true"
+      traefik.http.routers.minesweeper.rule: "Host(`mines.lab.crog.org`)"
+      traefik.http.routers.minesweeper.entrypoints: websecure
+      traefik.http.routers.minesweeper.tls: "true"
+      traefik.http.services.minesweeper.loadbalancer.server.port: "3000"
+      # Homepage
+      homepage.name: "Minesweeper"
+      homepage.description: "Démineur rétro avec effets néon et classement"
+      homepage.icon: "https://mines.lab.crog.org/favicon.ico"
+      homepage.group: "Games"
+      homepage.href: "https://mines.lab.crog.org"
+      # Watchtower
+      com.centurylinklabs.watchtower.enable: "true"
+
+networks:
+  web:
+    external: true
