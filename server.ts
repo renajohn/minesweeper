@@ -51,6 +51,8 @@ function getTop10(data: ScoresData): ScoresData {
 
 const HTML_PATH = join(import.meta.dir, "index.html");
 const htmlContent = readFileSync(HTML_PATH, "utf-8");
+const FAVICON_PATH = join(import.meta.dir, "favicon.svg");
+const faviconContent = readFileSync(FAVICON_PATH, "utf-8");
 
 const server = Bun.serve({
   port: PORT,
@@ -61,6 +63,13 @@ const server = Bun.serve({
     if (url.pathname === "/" || url.pathname === "/index.html") {
       return new Response(htmlContent, {
         headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+
+    // Serve favicon
+    if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
+      return new Response(faviconContent, {
+        headers: { "Content-Type": "image/svg+xml" },
       });
     }
 

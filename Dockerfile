@@ -2,7 +2,7 @@ FROM oven/bun:1-alpine
 
 WORKDIR /app
 
-COPY package.json tsconfig.json server.ts index.html ./
+COPY package.json tsconfig.json server.ts index.html favicon.svg ./
 
 RUN mkdir -p /data
 

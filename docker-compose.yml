@@ -16,7 +16,7 @@ services:
       # Homepage
       homepage.name: "Minesweeper"
       homepage.description: "Démineur rétro avec effets néon et classement"
-      homepage.icon: "https://mines.lab.crog.org/favicon.ico"
+      homepage.icon: "https://mines.lab.crog.org/favicon.svg"
       homepage.group: "Games"
       homepage.href: "https://mines.lab.crog.org"
       # Watchtower
