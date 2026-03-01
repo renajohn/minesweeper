@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>MINESWEEPER // RETRO FX</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input[type="text"] { -webkit-user-select: text; user-select: text; }
 
   :root {
     --bg: #0a0a1a;
@@ -209,6 +210,8 @@
     position: relative;
     transition: background 0.05s;
     image-rendering: pixelated;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
   }
 
   .cell:hover:not(.revealed):not(.flagged) {
@@ -627,6 +630,50 @@
     box-shadow: inset 0 0 15px rgba(0, 212, 255, 0.4);
     transition: box-shadow 0.3s;
   }
+
+  /* Long-press visual feedback */
+  .cell.long-press-active:not(.revealed):not(.flagged) {
+    background: rgba(255, 0, 110, 0.3);
+    box-shadow: inset 0 0 15px rgba(255, 0, 110, 0.5);
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+
+  /* Mobile responsive */
+  @media (max-width: 600px) {
+    body {
+      align-items: flex-start;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #game-wrapper {
+      width: 100vw;
+      display: flex;
+      justify-content: center;
+      padding: 4px 0;
+    }
+    .window {
+      max-width: 100vw;
+      border-left: none;
+      border-right: none;
+    }
+    #board {
+      margin: 4px;
+      padding: 4px;
+      overflow: auto;
+    }
+    .toolbar {
+      padding: 4px 8px;
+    }
+    .counter {
+      font-size: 16px;
+      min-width: 50px;
+      padding: 3px 6px;
+    }
+    .footer {
+      font-size: 6px !important;
+      padding: 4px !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -680,7 +727,7 @@
       </div>
       <ul class="scores-list" id="scores-list"></ul>
     </div>
-    <div class="footer">LEFT CLICK: REVEAL &nbsp; RIGHT CLICK: FLAG &nbsp; MIDDLE/SHIFT: CHORD</div>
+    <div class="footer" id="footer-text">LEFT CLICK: REVEAL &nbsp; RIGHT CLICK: FLAG &nbsp; MIDDLE/SHIFT: CHORD</div>
   </div>
 </div>
 
@@ -994,6 +1041,9 @@ function initBoard() {
       cell.addEventListener('mousedown', onCellDown);
       cell.addEventListener('mouseup', onCellUp);
       cell.addEventListener('contextmenu', e => e.preventDefault());
+      cell.addEventListener('touchstart', onTouchStart, { passive: false });
+      cell.addEventListener('touchend', onTouchEnd, { passive: false });
+      cell.addEventListener('touchmove', onTouchMove, { passive: false });
       boardEl.appendChild(cell);
     }
   }
@@ -1061,6 +1111,74 @@ function onCellUp(e) {
     revealCell(r, c);
   }
 
+  if (!gameOver) faceBtn.textContent = '🙂';
+}
+
+// ─── TOUCH / LONG-PRESS HANDLING ───────────────────────
+const LONG_PRESS_MS = 400;
+let touchTimer = null;
+let touchDidLongPress = false;
+let touchStartCell = null;
+
+function onTouchStart(e) {
+  e.preventDefault();
+  if (gameOver) return;
+  const cell = e.target.closest('.cell');
+  if (!cell) return;
+  touchStartCell = cell;
+  touchDidLongPress = false;
+  faceBtn.textContent = '😮';
+
+  touchTimer = setTimeout(() => {
+    touchDidLongPress = true;
+    const r = +cell.dataset.row;
+    const c = +cell.dataset.col;
+    if (!isNaN(r) && !isNaN(c)) {
+      toggleFlag(r, c);
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+    cell.classList.remove('long-press-active');
+    if (!gameOver) faceBtn.textContent = '🙂';
+  }, LONG_PRESS_MS);
+
+  cell.classList.add('long-press-active');
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  // Cancel long press if finger moves away
+  if (!touchTimer) return;
+  const touch = e.touches[0];
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  if (!el || el.closest('.cell') !== touchStartCell) {
+    clearTimeout(touchTimer);
+    touchTimer = null;
+    if (touchStartCell) touchStartCell.classList.remove('long-press-active');
+  }
+}
+
+function onTouchEnd(e) {
+  e.preventDefault();
+  clearTimeout(touchTimer);
+  touchTimer = null;
+  if (touchStartCell) touchStartCell.classList.remove('long-press-active');
+
+  if (gameOver) { faceBtn.textContent = faceBtn.textContent; return; }
+  if (touchDidLongPress) { touchDidLongPress = false; return; }
+
+  const cell = touchStartCell;
+  if (!cell) return;
+  const r = +cell.dataset.row;
+  const c = +cell.dataset.col;
+  if (isNaN(r) || isNaN(c)) return;
+
+  // Tap => reveal
+  if (firstClick) {
+    firstClick = false;
+    placeMines(r, c);
+    startTimer();
+  }
+  revealCell(r, c);
   if (!gameOver) faceBtn.textContent = '🙂';
 }
 
@@ -1433,6 +1551,19 @@ nameInput.addEventListener('keydown', e => {
 });
 skipScoreBtn.addEventListener('click', () => {
   nameModal.classList.remove('show');
+});
+
+// ─── MOBILE DETECTION & FOOTER ─────────────────────────
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+if (isTouchDevice) {
+  document.getElementById('footer-text').innerHTML =
+    'TAP: REVEAL &nbsp; LONG PRESS: FLAG';
+}
+
+// Allow text input in form fields
+document.querySelectorAll('input[type="text"]').forEach(el => {
+  el.style.userSelect = 'text';
+  el.style.webkitUserSelect = 'text';
 });
 
 // ─── START ──────────────────────────────────────────────
