@@ -673,6 +673,24 @@
       font-size: 6px !important;
       padding: 4px !important;
     }
+
+    /* Green flash on flag placement (mobile only) */
+    #flag-flash {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 997;
+      opacity: 0;
+      background: radial-gradient(ellipse at center, rgba(57, 255, 20, 0.25) 0%, rgba(57, 255, 20, 0.1) 40%, transparent 75%);
+    }
+    #flag-flash.show {
+      animation: flagFlash 0.35s ease-out forwards;
+    }
+    @keyframes flagFlash {
+      0% { opacity: 0; }
+      25% { opacity: 1; }
+      100% { opacity: 0; }
+    }
   }
 </style>
 </head>
@@ -680,6 +698,7 @@
 
 <canvas id="particles"></canvas>
 <div class="glitch-overlay" id="glitch"></div>
+<div id="flag-flash"></div>
 <div id="win-banner">YOU WIN!<br><span class="score-line" id="win-score"></span></div>
 <div id="lose-banner">BOOM!<br><span class="score-line" id="lose-score"></span></div>
 
@@ -1136,6 +1155,12 @@ function onTouchStart(e) {
     if (!isNaN(r) && !isNaN(c)) {
       toggleFlag(r, c);
       if (navigator.vibrate) navigator.vibrate(30);
+      // Green screen flash
+      const flash = document.getElementById('flag-flash');
+      flash.classList.remove('show');
+      void flash.offsetWidth;
+      flash.classList.add('show');
+      flash.addEventListener('animationend', () => flash.classList.remove('show'), { once: true });
     }
     cell.classList.remove('long-press-active');
     if (!gameOver) faceBtn.textContent = '🙂';
